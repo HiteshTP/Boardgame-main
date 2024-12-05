@@ -1,0 +1,43 @@
+pipeline {
+    agent {label 'agent'}
+    
+    tools {
+        jdk 'java17'
+        maven 'maven3'
+    }
+
+    enviornment {
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('git checkout') {
+            steps {
+                git url: "https://github.com/HiteshTP/Boardgame-main.git", branch: 'main'
+            }
+        }
+        stage('compile') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+        stage('sonarQube') {
+            steps {
+                sh "mvn test"
+            }
+        }
+        stage('sonarqube analysis') {
+            steps {
+                withSonarQubeEnv(credentialsId: 'sonar') {
+                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=BoardGame -Dsonar.projectName=BoardGame \
+                            -Dsonar.java.binaries=. '''
+                }
+            }
+        }
+        stage('Quality Gate') {
+            steps {
+                waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+            }
+        }
+    }    
+}
